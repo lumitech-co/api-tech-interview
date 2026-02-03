@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator dbml {
+  provider            = "prisma-dbml-generator"
+  output              = "../dbml"
+  outputName          = "schema.dbml"
+  projectName         = "Project Name"
+  projectDatabaseType = "PostgreSQL"
+  projectNote         = "ER Diagram"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  text String
+
+  @@map("messages")
+}
+
+enum Currencies {
+  CHF
+  EUR
+  GBP
+  PLN
+  UAH
+  USD
+  CZK
+  HUF
+}
+
+enum UserRoles {
+  SUPER_ADMIN
+  SUB_ADMIN
+  USER
+}
+
+enum UserStatuses {
+  ACTIVE
+  DEACTIVATED
+  DELETED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fullName    String       @map("full_name")
+  currency    Currencies   @default(USD)
+  email       String
+  phoneNumber String       @map("phone_number")
+  status      UserStatuses @default(ACTIVE)
+  password    String
+  dateOfBirth DateTime     @default(now()) @map("date_of_birth") @db.Date
+  role        UserRoles    @default(USER)
+  balance     Float
+
+  categories    Category[]
+  balances      Balance[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  token     String
+  expiresAt DateTime @map("expires_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+enum CategoryTypes {
+  INCOME
+  OUTCOME
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  title String
+  image String
+  color String
+  type  CategoryTypes
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
+
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+model Balance {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  startBalance Float      @map("start_balance")
+  balance      Float
+  currency     Currencies
+  title        String
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  transactions Transaction[]
+
+  @@map("balances")
+}
+
+model CurrencyRate {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fromCurrency Currencies @map("from_currency")
+  toCurrency   Currencies @map("to_currency")
+  rate         Float
+  date         DateTime   @db.Date
+
+  @@unique([fromCurrency, toCurrency, date])
+  @@map("currency_rates")
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  date        DateTime
+  amount      Float
+  description String
+
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  balanceId BigInt  @map("balance_id")
+  balance   Balance @relation(fields: [balanceId], references: [id])
+
+  @@map("transactions")
+}
